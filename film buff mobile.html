@@ -1,0 +1,456 @@
+<html><head><base href="." /><title>Movie Title Game</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<style>
+    body {
+        font-family: 'Arial', sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        background: linear-gradient(135deg, #1a1a1a 0%, #2c3e50 100%);
+        color: white;
+    }
+
+    .container {
+        width: 90%;
+        max-width: 600px;
+        margin: 20px;
+        padding: 1rem;
+        text-align: center;
+        background: rgba(0, 0, 0, 0.7);
+        border-radius: 15px;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        -webkit-user-select: none;
+        user-select: none;
+        touch-action: manipulation;
+    }
+
+    .movie-title {
+        font-size: 2.5rem;
+        margin-bottom: 2rem;
+        letter-spacing: 2px;
+    }
+
+    .letter {
+        display: inline-block;
+        margin: 0 2px;
+    }
+
+    .hidden {
+        color: transparent;
+        border-bottom: 2px solid #e74c3c;
+        animation: revealText 0s 45s forwards;
+    }
+
+    .timer {
+        font-size: 1.5rem;
+        margin-top: 1rem;
+        color: #3498db;
+    }
+
+    @keyframes revealText {
+        to {
+            color: #2ecc71;
+        }
+    }
+
+    .clapperboard {
+        width: 100px;
+        height: 100px;
+        margin-bottom: 2rem;
+        cursor: pointer;
+    }
+
+    .clapperboard-top {
+        fill: #95a5a6;
+        transform-origin: 50% 30%;
+        transition: transform 0.3s;
+    }
+
+    .clapperboard.active .clapperboard-top {
+        animation: clap 0.5s ease-in-out;
+    }
+
+    @keyframes clap {
+        0% { transform: rotate(0deg); }
+        25% { transform: rotate(-45deg); }
+        75% { transform: rotate(-45deg); }
+        100% { transform: rotate(0deg); }
+    }
+
+    .clapperboard-bottom {
+        fill: #7f8c8d;
+    }
+
+    .next-button {
+        margin-top: 2rem;
+        padding: 1rem 2rem;
+        font-size: 1.2rem;
+        background: #3498db;
+        border: none;
+        border-radius: 5px;
+        color: white;
+        cursor: pointer;
+        transition: background 0.3s ease;
+        min-height: 44px;
+        min-width: 44px;
+        padding: 12px 24px;
+    }
+
+    .next-button:hover {
+        background: #2980b9;
+    }
+
+    .action-text {
+        position: absolute;
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #ffff00; /* Changed from #e74c3c to yellow */
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        opacity: 0;
+        transform: scale(0.5);
+        pointer-events: none;
+    }
+
+    @keyframes actionText {
+        0% { 
+            opacity: 0;
+            transform: scale(0.5);
+        }
+        50% { 
+            opacity: 1;
+            transform: scale(1.2);
+        }
+        100% { 
+            opacity: 0;
+            transform: scale(1.5);
+        }
+    }
+
+    .action-text.active {
+        animation: actionText 1.5s ease-out forwards;
+    }
+
+    @media screen and (max-width: 768px) {
+        .movie-title {
+            font-size: 1.8rem;
+        }
+        
+        .timer {
+            font-size: 1.2rem;
+        }
+        
+        .next-button {
+            font-size: 1rem;
+            padding: 0.8rem 1.6rem;
+        }
+        
+        .action-text {
+            font-size: 2rem;
+        }
+    }
+
+    @media screen and (max-width: 480px) {
+        .movie-title {
+            font-size: 1.5rem;
+        }
+        
+        .clapperboard {
+            width: 80px;
+            height: 80px;
+        }
+        
+        .container {
+            padding: 0.8rem;
+        }
+    }
+</style>
+</head>
+<body>
+    <div class="container">
+        <svg class="clapperboard" viewBox="0 0 100 100" id="clapperboard">
+            <rect class="clapperboard-bottom" x="10" y="30" width="80" height="60" rx="5"/>
+            <path class="clapperboard-top" d="M90,30 L10,30 L15,10 L95,10 L90,30" />
+            <rect x="20" y="15" width="10" height="10" fill="white"/>
+            <rect x="40" y="15" width="10" height="10" fill="white"/>
+            <rect x="60" y="15" width="10" height="10" fill="white"/>
+        </svg>
+        
+        <div class="movie-title">
+            <!-- Initial movie title will be inserted by JavaScript -->
+        </div>
+        
+        <div class="timer" id="timer">45</div>
+        <button class="next-button" id="nextButton">Next Movie</button>
+    </div>
+    <div class="action-text" id="actionText">AND... ACTION!</div>
+
+    <script>
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const audioCtx = new AudioContext();
+
+        function createClapSound() {
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            oscillator.type = 'square';
+            oscillator.frequency.setValueAtTime(150, audioCtx.currentTime);
+            gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+            
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.1);
+        }
+
+        function createDirectorSound() {
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
+            gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+            
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.3);
+        }
+
+        let timeLeft = 45;
+        const timerElement = document.getElementById('timer');
+        const movieTitles = [
+            { title: "The Godfather", hiddenIndices: [1, 2, 3, 4, 6, 8, 9] },
+            { title: "Pulp Fiction", hiddenIndices: [1, 2, 3, 4, 7, 8, 9] },
+            { title: "The Shawshank Redemption", hiddenIndices: [1, 2, 4, 6, 9, 11, 13, 15, 17] },
+            { title: "Schindlers List", hiddenIndices: [1, 2, 4, 5, 6, 8, 9, 11] },
+            { title: "Forrest Gump", hiddenIndices: [1, 2, 3, 4, 5, 7, 8, 9, 10] },
+            { title: "The Matrix", hiddenIndices: [1, 2, 4, 5, 6, 7, 8] },
+            { title: "Jurassic Park", hiddenIndices: [1, 2, 4, 5, 6, 8, 9, 10] },
+            { title: "Titanic", hiddenIndices: [1, 2, 3, 4, 5, 6] },
+            { title: "The Dark Knight", hiddenIndices: [1, 2, 4, 5, 6, 8, 9, 10, 11] },
+            { title: "Inception", hiddenIndices: [1, 2, 3, 4, 5, 6, 7, 8] },
+            { title: "The Silence of the Lambs", hiddenIndices: [1, 3, 5, 7, 9, 11, 13, 15, 17] },
+            { title: "Goodfellas", hiddenIndices: [1, 2, 4, 6, 7, 8] },
+            { title: "The Lord of the Rings", hiddenIndices: [1, 3, 5, 7, 9, 11, 13, 15] },
+            { title: "Fight Club", hiddenIndices: [1, 2, 3, 5, 7, 8] },
+            { title: "The Green Mile", hiddenIndices: [1, 3, 5, 7, 8, 9, 10] },
+            { title: "Gladiator", hiddenIndices: [1, 3, 5, 6, 7, 8] },
+            { title: "The Sixth Sense", hiddenIndices: [1, 3, 5, 7, 9, 10, 11] },
+            { title: "Saving Private Ryan", hiddenIndices: [1, 3, 5, 7, 9, 11, 12, 13] },
+            { title: "The Departed", hiddenIndices: [1, 3, 5, 7, 8, 9] },
+            { title: "The Usual Suspects", hiddenIndices: [1, 3, 5, 7, 9, 11, 13, 14] },
+            { title: "Avatar", hiddenIndices: [1, 2, 3, 4, 5] },
+            { title: "The Social Network", hiddenIndices: [1, 3, 5, 7, 9, 11, 13] },
+            { title: "Black Panther", hiddenIndices: [1, 3, 5, 7, 9, 10, 11] },
+            { title: "La La Land", hiddenIndices: [1, 2, 3, 4, 5, 6, 7] },
+            { title: "Interstellar", hiddenIndices: [1, 3, 5, 7, 9, 10, 11] },
+            { title: "The Wolf of Wall Street", hiddenIndices: [1, 3, 5, 7, 9, 11, 13, 15] },
+            { title: "Django Unchained", hiddenIndices: [1, 3, 5, 7, 9, 11, 13] },
+            { title: "Mad Max Fury Road", hiddenIndices: [1, 3, 5, 7, 9, 11, 12, 13] },
+            { title: "The Grand Budapest Hotel", hiddenIndices: [1, 3, 5, 7, 9, 11, 13, 15] },
+            { title: "Top Gun Maverick", hiddenIndices: [1, 3, 5, 7, 9, 11, 12, 13] },
+            { title: "Parasite", hiddenIndices: [1, 3, 5, 6, 7, 8] },
+            { title: "Dunkirk", hiddenIndices: [1, 3, 4, 5, 6] },
+            { title: "Wonder Woman", hiddenIndices: [1, 3, 5, 7, 9, 10] },
+            { title: "A Quiet Place", hiddenIndices: [1, 3, 5, 7, 9, 10] },
+            { title: "Get Out", hiddenIndices: [1, 2, 3, 4, 5, 6] },
+            { title: "Whiplash", hiddenIndices: [1, 3, 5, 6, 7, 8] },
+            { title: "The Shining", hiddenIndices: [1, 2, 4, 5, 6, 7, 8] },
+            { title: "Casablanca", hiddenIndices: [1, 3, 5, 7, 8, 9] },
+            { title: "Back to the Future", hiddenIndices: [1, 3, 5, 7, 9, 11, 13] },
+            { title: "The Lion King", hiddenIndices: [1, 3, 5, 7, 8, 9] },
+            { title: "Star Wars", hiddenIndices: [1, 2, 3, 4, 5, 6, 7] },
+            { title: "E T The Extra Terrestrial", hiddenIndices: [1, 3, 5, 7, 9, 11, 13, 15, 17] },
+            { title: "Jaws", hiddenIndices: [1, 2, 3, 4] },
+            { title: "The Terminator", hiddenIndices: [1, 3, 5, 7, 9, 10] },
+            { title: "Rocky", hiddenIndices: [1, 2, 3, 4, 5] },
+            { title: "Alien", hiddenIndices: [1, 2, 3, 4, 5] },
+            { title: "The Breakfast Club", hiddenIndices: [1, 3, 5, 7, 9, 11, 12] },
+            { title: "Die Hard", hiddenIndices: [1, 2, 3, 4, 5, 6, 7] },
+            { title: "Blade Runner", hiddenIndices: [1, 3, 5, 7, 8, 9, 10] },
+            { title: "The Princess Bride", hiddenIndices: [1, 3, 5, 7, 9, 11, 12] },
+            { title: "Raiders of the Lost Ark", hiddenIndices: [1, 3, 5, 7, 9, 11, 13, 15] },
+            { title: "Ghostbusters", hiddenIndices: [1, 3, 5, 7, 9, 10] },
+            { title: "The Karate Kid", hiddenIndices: [1, 3, 5, 7, 9, 10] },
+            { title: "Full Metal Jacket", hiddenIndices: [1, 3, 5, 7, 9, 11, 12] },
+            { title: "Scarface", hiddenIndices: [1, 3, 5, 7, 8] },
+            { title: "Apocalypse Now", hiddenIndices: [1, 3, 5, 7, 9, 10] },
+            { title: "A Beautiful Mind", hiddenIndices: [1, 3, 5, 7, 9, 11, 12] },
+            { title: "Good Will Hunting", hiddenIndices: [1, 3, 5, 7, 9, 11, 12] },
+            { title: "The Departed", hiddenIndices: [1, 3, 5, 7, 8, 9] },
+            { title: "Training Day", hiddenIndices: [1, 3, 5, 7, 8, 9] },
+            { title: "Million Dollar Baby", hiddenIndices: [1, 3, 5, 7, 9, 11, 12] },
+            { title: "No Country for Old Men", hiddenIndices: [1, 3, 5, 7, 9, 11, 13, 15] },
+            { title: "There Will Be Blood", hiddenIndices: [1, 3, 5, 7, 9, 11, 12] },
+            { title: "The Hurt Locker", hiddenIndices: [1, 3, 5, 7, 9, 11] },
+            { title: "Slumdog Millionaire", hiddenIndices: [1, 3, 5, 7, 9, 11] },
+            { title: "The Kings Speech", hiddenIndices: [1, 3, 5, 7, 9, 10] },
+            { title: "Argo", hiddenIndices: [1, 2, 3, 4] },
+            { title: "Twelve Years a Slave", hiddenIndices: [1, 3, 5, 7, 9, 11, 13] },
+            { title: "Birdman", hiddenIndices: [1, 2, 3, 4, 5, 6] },
+            { title: "Spotlight", hiddenIndices: [1, 3, 5, 7, 8, 9] },
+            { title: "Moonlight", hiddenIndices: [1, 3, 5, 7, 8] },
+            { title: "The Shape of Water", hiddenIndices: [1, 3, 5, 7, 9, 11, 12] },
+            { title: "Green Book", hiddenIndices: [1, 3, 5, 6, 7, 8] },
+            { title: "Once Upon a Time in Hollywood", hiddenIndices: [1, 3, 5, 7, 9, 11, 13, 15, 17] },
+            { title: "CODA", hiddenIndices: [1, 2, 3, 4] },
+            { title: "Everything Everywhere All at Once", hiddenIndices: [1, 3, 5, 7, 9, 11, 13, 15, 17] },
+            { title: "The Revenant", hiddenIndices: [1, 3, 5, 7, 8, 9] },
+            { title: "Life of Pi", hiddenIndices: [1, 3, 5, 6, 7] },
+            { title: "Manchester by the Sea", hiddenIndices: [1, 3, 5, 7, 9, 11, 13] },
+            { title: "Roma", hiddenIndices: [1, 2, 3, 4] },
+            { title: "Three Billboards", hiddenIndices: [1, 3, 5, 7, 9, 10, 11] },
+            { title: "The Theory of Everything", hiddenIndices: [1, 3, 5, 7, 9, 11, 13, 15] },
+            { title: "Nomadland", hiddenIndices: [1, 3, 5, 7, 8, 9] },
+            { title: "The Power of the Dog", hiddenIndices: [1, 3, 5, 7, 9, 11, 13] },
+            { title: "Belfast", hiddenIndices: [1, 3, 5, 6, 7] },
+            { title: "Dune", hiddenIndices: [1, 2, 3, 4] },
+            { title: "King Richard", hiddenIndices: [1, 3, 5, 7, 8, 9, 10] },
+            { title: "The Batman", hiddenIndices: [1, 3, 5, 6, 7] },
+            { title: "Elvis", hiddenIndices: [1, 2, 3, 4, 5] },
+            { title: "Top Gun", hiddenIndices: [1, 2, 3, 4, 5, 6] },
+            { title: "Nope", hiddenIndices: [1, 2, 3, 4] },
+            { title: "The Whale", hiddenIndices: [1, 3, 5, 6, 7] },
+            { title: "The Banshees of Inisherin", hiddenIndices: [1, 3, 5, 7, 9, 11, 13, 15] },
+            { title: "Tar", hiddenIndices: [1, 2, 3] },
+            { title: "The Fabelmans", hiddenIndices: [1, 3, 5, 7, 9, 10] },
+            { title: "Triangle of Sadness", hiddenIndices: [1, 3, 5, 7, 9, 11, 12] },
+            { title: "Women Talking", hiddenIndices: [1, 3, 5, 7, 8, 9] },
+            { title: "All Quiet on the Western Front", hiddenIndices: [1, 3, 5, 7, 9, 11, 13, 15, 17] },
+            { title: "Barbie", hiddenIndices: [1, 2, 3, 4, 5, 6] },
+            { title: "Oppenheimer", hiddenIndices: [1, 3, 5, 7, 9, 10] },
+            { title: "Poor Things", hiddenIndices: [1, 3, 5, 7, 8, 9] },
+            { title: "Killers of the Flower Moon", hiddenIndices: [1, 3, 5, 7, 9, 11, 13, 15] }
+        ];
+        
+        let currentMovieIndex = Math.floor(Math.random() * movieTitles.length);
+        let usedIndices = new Set([currentMovieIndex]);
+        let countdown;
+
+        const clapperboard = document.getElementById('clapperboard');
+        clapperboard.addEventListener('click', () => {
+            clapperboard.classList.add('active');
+            createClapSound();
+            showActionText();
+            setTimeout(() => {
+                createDirectorSound();
+                clapperboard.classList.remove('active');
+            }, 500);
+        });
+
+        // Add touch events for the clapperboard
+        clapperboard.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // Prevent default touch behavior
+            clapperboard.classList.add('active');
+            createClapSound();
+            showActionText();
+            setTimeout(() => {
+                createDirectorSound();
+                clapperboard.classList.remove('active');
+            }, 500);
+        }, { passive: false });
+
+        function showActionText() {
+            const actionText = document.getElementById('actionText');
+            actionText.style.top = '50%';
+            actionText.style.left = '50%';
+            actionText.style.transform = 'translate(-50%, -50%)';
+            actionText.classList.remove('active');
+            void actionText.offsetWidth; // Trigger reflow
+            actionText.classList.add('active');
+        }
+
+        function startTimer() {
+            clearInterval(countdown);
+            timeLeft = 45;
+            timerElement.textContent = timeLeft;
+            
+            countdown = setInterval(() => {
+                timeLeft--;
+                timerElement.textContent = timeLeft;
+                
+                if (timeLeft <= 0) {
+                    clearInterval(countdown);
+                    timerElement.textContent = "Time's up!";
+                    createDirectorSound();
+                }
+            }, 1000);
+        }
+
+        function displayMovie(movieIndex) {
+            const movieData = movieTitles[movieIndex];
+            const movieContainer = document.querySelector('.movie-title');
+            movieContainer.innerHTML = '';
+            
+            movieData.title.split('').forEach((char, index) => {
+                if (char === ' ') {
+                    movieContainer.appendChild(document.createTextNode('\u00A0'));
+                } else {
+                    const span = document.createElement('span');
+                    span.className = `letter ${movieData.hiddenIndices.includes(index) ? 'hidden' : ''}`;
+                    span.textContent = char;
+                    movieContainer.appendChild(span);
+                }
+            });
+        }
+
+        document.getElementById('nextButton').addEventListener('click', () => {
+            clapperboard.classList.add('active');
+            createClapSound();
+            showActionText();
+            
+            setTimeout(() => {
+                clapperboard.classList.remove('active');
+                
+                if (usedIndices.size === movieTitles.length) {
+                    usedIndices.clear();
+                }
+                
+                let newIndex;
+                do {
+                    newIndex = Math.floor(Math.random() * movieTitles.length);
+                } while (usedIndices.has(newIndex));
+                
+                usedIndices.add(newIndex);
+                currentMovieIndex = newIndex;
+                
+                displayMovie(currentMovieIndex);
+                startTimer();
+            }, 500);
+        });
+
+        // Add touch events for the next button
+        const nextButton = document.getElementById('nextButton');
+        nextButton.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            // Trigger the click event
+            nextButton.click();
+        }, { passive: false });
+
+        // Prevent zoom on double tap
+        document.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 1) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', (e) => {
+            const now = Date.now();
+            if (now - lastTouchEnd <= 300) {
+                e.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, { passive: false });
+
+        displayMovie(currentMovieIndex);
+        startTimer();
+    </script>
+</body></html>
